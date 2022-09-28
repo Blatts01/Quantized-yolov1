@@ -1,12 +1,12 @@
 import os
-
 import cv2
 import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
+from xml.etree import ElementTree
 
-from .util import xywhc2label
+from .util import parse_cfg, xywhc2label
 
 
 class YOLODataset(Dataset):
@@ -50,6 +50,83 @@ class YOLODataset(Dataset):
         label = xywhc2label(xywhc, self.S, self.B, self.num_classes)  # convert xywhc list to label
         label = torch.Tensor(label)
         return img, label
+
+
+class PascalVOC(Dataset):
+    def __init__(self, data_path, S, B, class_names, transforms=None):
+        self.img_path = data_path  # images folder path
+        self.label_path = data_path  # labels folder path
+        self.transforms = transforms
+        for file in os.listdir(data_path):
+            if file.endswith(".jpg"):
+                self.filenames.append(file)
+        self.filenames.sort()
+        self.S = S
+        self.B = B
+        self.num_classes = len(class_names)
+        self.class_names = class_names
+        self.class_id = dict()
+        for count, class_name in enumerate(class_names):
+            self.class_id[str(class_name)] = str(count)
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, idx):
+        # read image
+        img = cv2.imread(os.path.join(self.img_path, self.filenames[idx]))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        img = Image.fromarray(img).convert('RGB')
+        img = self.transforms(img)  # resize and to tensor
+
+        # read the correpsondenting *.xml file and convert it to yolo
+        xywhc = voc2yolo(os.path.join(self.label_path, os.path.splitext(self.filenames[idx])[0] + '.xml'))
+
+        label = xywhc2label(xywhc, self.S, self.B, self.num_classes)  # convert xywhc list to label
+        label = torch.Tensor(label)
+        return img, label
+
+    def voc2yolo(self, xml_file):
+        in_file = open(xml_file)
+        tree = ElementTree.parse(in_file)
+        size = tree.getroot().find('size')
+        height = int(size.find('height').text)
+        width = int(size.find('width').text)
+        class_exists = False
+
+        for obj in tree.findall('object'):
+            name = obj.find('name').text
+            if name in self.class_names:
+                class_exists = True
+
+        #check for all objects 
+        xywhc = []
+        if class_exists:
+            for obj in tree.findall('object'):
+                # ignore difficult objects 
+                difficult = obj.find('difficult').text
+                if int(difficult) == 1:
+                    continue
+                xml_box = obj.find('bndbox')
+                x_min = float(xml_box.find('xmin').text)
+                y_min = float(xml_box.find('ymin').text)
+                x_max = float(xml_box.find('xmax').text)
+                y_max = float(xml_box.find('ymax').text)
+
+                box_x_center = (x_min + x_max) / 2.0 - 1 # according to darknet annotation
+                box_y_center = (y_min + y_max) / 2.0 - 1 # according to darknet annotation
+                box_w = x_max - x_min
+                box_h = y_max - y_min
+                box_x = box_x_center * 1. / width
+                box_w = box_w * 1. / width
+                box_y = box_y_center * 1. / height
+                box_h = box_h * 1. / height
+
+                b = [box_x, box_y, box_w, box_h]
+                id = self.class_id[str(obj.find('name').text)]
+                xywhc.append((box_x, box_y, box_w, box_h, id))
+        return xywhc
 
 
 def create_dataloader(img_path, label_path, train_proportion, val_proportion, test_proportion, batch_size, input_size,

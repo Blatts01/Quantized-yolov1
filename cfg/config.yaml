@@ -1,0 +1,11 @@
+# yolov1
+S: 7
+B: 2
+
+# Pascal VOC Dataset
+input_size: 448
+train_path: /
+valid_path: /
+test_path: /
+# class names
+class_names: [ 'Pizza', 'Pepperoni' ]

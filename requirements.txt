@@ -1,4 +1,3 @@
-# ===base===
 torch>=1.2.0
 torchvision
 numpy
@@ -7,3 +6,5 @@ pillow
 matplotlib
 PyYaml
 torchviz
+pascal-voc-writer
+PIL
