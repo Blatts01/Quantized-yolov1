@@ -1,10 +1,15 @@
 from torch import nn
-from torchvision.models import resnet34
+import torch.nn.functional as F
+
+import brevitas.nn as qnn
+from brevitas.quant import Int8WeightPerTensorFloat as SignedWeightQuant
+from brevitas.quant import ShiftedUint8WeightPerTensorFloat as UnsignedWeightQuant
+from brevitas.quant import ShiftedUint8ActPerTensorFloat as ActQuant
+from brevitas.quant import Int8Bias as BiasQuant
 
 
 class YOLOv1(nn.Module):
     """YOLOv1 model structure
-    yolo-v1 = conv + fc
     """
 
     def __init__(self, S, B, num_classes):
@@ -68,55 +73,71 @@ class YOLOv1(nn.Module):
         return out
 
 
-class YOLOv1ResNet(nn.Module):
-    """YOLOv1-Resnet model structure
-    yolo-v1 resnet = resnet(backbone) + conv + fc
-    """
+class QuantYOLOv1(nn.Module):
+    # Quantized YOLOv1 model structure
 
-    def __init__(self, S, B, num_classes):
-        super(YOLOv1ResNet, self).__init__()
+    def __init__(self, S, B, num_classes, quant_relu=True ):
+        super(QuantYOLOv1, self).__init__()
         self.S = S
         self.B = B
         self.num_classes = num_classes
-        # self.resnet = resnet18()
-        self.resnet = resnet34()
-        # print(self.resnet.fc.in_features)
-        # print(*list(self.resnet.children())[-2:])  # show last two layers
-
-        # backbone part, (cut resnet's last two layers)
-        self.backbone = nn.Sequential(*list(self.resnet.children())[:-2])
-
         # conv part
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(512, 1024, 3, padding=1),
-            nn.BatchNorm2d(1024),
-            nn.LeakyReLU(0.1, inplace=True),
+            # 448*448*3 -> 112*112*192
+            qnn.QuantConv2d(3, 192, 7, stride=2, padding=1),
+            nn.BatchNorm2d(192),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+            nn.MaxPool2d(2, stride=2),
 
-            nn.Conv2d(1024, 1024, 3, stride=2, padding=1),
-            nn.BatchNorm2d(1024),
-            nn.LeakyReLU(0.1, inplace=True),
+            # 112*112*192 ->56*56*256
+            qnn.QuantConv2d(192, 256, 3, padding=1),
+            nn.BatchNorm2d(256),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+            nn.MaxPool2d(2, stride=2),
 
-            nn.Conv2d(1024, 1024, 3, padding=1),
-            nn.BatchNorm2d(1024),
-            nn.LeakyReLU(0.1, inplace=True),
+            # 56*56*256 -> 28*28*512
+            qnn.QuantConv2d(256, 512, 3, padding=1),
+            nn.BatchNorm2d(512),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+            nn.MaxPool2d(2, stride=2),
 
-            # nn.Conv2d(1024, 1024, 3, padding=1),
-            # nn.BatchNorm2d(1024),
-            # nn.LeakyReLU(0.1, inplace=True),
+            # 28*28*512 -> 14*14*1024
+            qnn.QuantConv2d(512, 1024, 3, padding=1),
+            nn.BatchNorm2d(1024),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+            nn.MaxPool2d(2, stride=2),
+
+            # 14*14*1024 -> 7*7*1024
+            qnn.QuantConv2d(1024, 1024, 3, stride=2, padding=1),
+            nn.BatchNorm2d(1024),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+
+            # 7*7*1024 -> 7*7*1024
+            qnn.QuantConv2d(1024, 1024, 3, padding=1),
+            nn.BatchNorm2d(1024),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
         )
 
         # full connection part
         self.fc_layers = nn.Sequential(
             nn.Linear(7 * 7 * 1024, 4096),
-            nn.LeakyReLU(0.1, inplace=True),
+            #nn.LeakyReLU(0.1, inplace=True),
+            qnn.QuantReLU(return_quant_tensor=quant_relu),
+            nn.Dropout(0.5),
             nn.Linear(4096, self.S * self.S * (self.B * 5 + self.num_classes)),
             nn.Sigmoid()  # normalized to 0~1
         )
 
     def forward(self, x):
-        out = self.backbone(x)
-        out = self.conv_layers(out)
-        out = out.view(out.size()[0], -1)
+        out = self.conv_layers(x)  # b*1024*7*7
+        out = out.view(out.size()[0], -1)  # b*50176
         out = self.fc_layers(out)
         out = out.reshape(-1, self.S, self.S, self.B * 5 + self.num_classes)
         return out
+

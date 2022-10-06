@@ -54,12 +54,15 @@ class YOLODataset(Dataset):
 
 class PascalVOC(Dataset):
     def __init__(self, data_path, S, B, class_names, transforms=None):
-        self.img_path = data_path  # images folder path
-        self.label_path = data_path  # labels folder path
+        self.img_path = data_path  # images folder path, see roboflow dataset
+        self.label_path = data_path  # labels folder path, see roboflow dataset
         self.transforms = transforms
+        self.filenames = list()
+
         for file in os.listdir(data_path):
             if file.endswith(".jpg"):
                 self.filenames.append(file)
+
         self.filenames.sort()
         self.S = S
         self.B = B
@@ -80,14 +83,14 @@ class PascalVOC(Dataset):
         img = Image.fromarray(img).convert('RGB')
         img = self.transforms(img)  # resize and to tensor
 
-        # read the correpsondenting *.xml file and convert it to yolo
-        xywhc = voc2yolo(os.path.join(self.label_path, os.path.splitext(self.filenames[idx])[0] + '.xml'))
+        # read the correpsondenting *.xml file and convert it to yolo format
+        xywhc = self.voc2yolo(os.path.join(self.label_path, os.path.splitext(self.filenames[idx])[0] + '.xml'))
 
         label = xywhc2label(xywhc, self.S, self.B, self.num_classes)  # convert xywhc list to label
         label = torch.Tensor(label)
         return img, label
 
-    def voc2yolo(self, xml_file):
+    def voc2yolo(self,xml_file):
         in_file = open(xml_file)
         tree = ElementTree.parse(in_file)
         size = tree.getroot().find('size')
@@ -114,8 +117,8 @@ class PascalVOC(Dataset):
                 x_max = float(xml_box.find('xmax').text)
                 y_max = float(xml_box.find('ymax').text)
 
-                box_x_center = (x_min + x_max) / 2.0 - 1 # according to darknet annotation
-                box_y_center = (y_min + y_max) / 2.0 - 1 # according to darknet annotation
+                box_x_center = (x_min + x_max) / 2.0 - 1 
+                box_y_center = (y_min + y_max) / 2.0 - 1 
                 box_w = x_max - x_min
                 box_h = y_max - y_min
                 box_x = box_x_center * 1. / width
@@ -129,24 +132,18 @@ class PascalVOC(Dataset):
         return xywhc
 
 
-def create_dataloader(img_path, label_path, train_proportion, val_proportion, test_proportion, batch_size, input_size,
-                      S, B, num_classes):
+def create_dataloader(train_path, valid_path, test_path, batch_size, input_size,
+                      S, B, class_names):
     transform = transforms.Compose([
         transforms.Resize((input_size, input_size)),
         transforms.ToTensor()
     ])
 
-    # create yolo dataset
-    dataset = YOLODataset(img_path, label_path, S, B, num_classes, transforms=transform)
+    # create PascalVOC dataset
+    train_dataset = PascalVOC(train_path, S, B, class_names, transform)
+    val_dataset = PascalVOC(valid_path, S, B, class_names, transform)
+    test_dataset = PascalVOC(test_path, S, B, class_names, transform)
 
-    dataset_size = len(dataset)
-    train_size = int(dataset_size * train_proportion)
-    val_size = int(dataset_size * val_proportion)
-    # test_size = int(dataset_size * test_proportion)
-    test_size = dataset_size - train_size - val_size
-
-    # split dataset to train set, val set and test set three parts
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
     # create data loader
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)

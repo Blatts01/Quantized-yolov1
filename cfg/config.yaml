@@ -4,8 +4,11 @@ B: 2
 
 # Pascal VOC Dataset
 input_size: 448
-train_path: dataset/train/
-valid_path: dataset/valid/
-test_path: dataset/test/
+train_path: /home/blattst/git/pizza/dataset/train/
+valid_path: /home/blattst/git/pizza/dataset/valid/
+test_path: /home/blattst/git/pizza/dataset/test/
 # class names
 class_names: [ 'Pizza', 'Pepperoni' ]
+
+# training 
+batch_size: 32

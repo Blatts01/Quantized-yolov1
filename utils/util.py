@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import yaml
 
-from models import YOLOv1
+from models import YOLOv1, QuantYOLOv1
 
 
 def xywhc2label(bboxs, S, B, num_classes):
@@ -16,7 +16,7 @@ def xywhc2label(bboxs, S, B, num_classes):
         xx, yy = x, y
         label[y_grid, x_grid, 0:5] = np.array([xx, yy, w, h, 1])
         label[y_grid, x_grid, 5:10] = np.array([xx, yy, w, h, 1])
-        label[y_grid, x_grid, 10 + c] = 1
+        label[y_grid, x_grid, 10 + int(c)] = 1
     return label
 
 
@@ -159,7 +159,7 @@ def parse_cfg(cfg_path):
 
 def build_model(weight_path, S, B, num_classes):
     model = YOLOv1(S, B, num_classes)
-    # model = YOLOv1ResNet(S, B, num_classes)
+    #model = QuantYOLOv1(S, B, num_classes)
 
     # load pretrained model
     if weight_path and weight_path != '':

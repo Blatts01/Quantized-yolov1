@@ -9,16 +9,14 @@ from torchvision import utils
 
 from utils import create_dataloader, YOLOv1Loss, parse_cfg, build_model
 
-# from torchviz import make_dot
+from torchviz import make_dot
 
 parser = argparse.ArgumentParser(description='YOLOv1-pytorch')
-parser.add_argument("--cfg", "-c", default="cfg/yolov1.yaml", help="Yolov1 config file path", type=str)
-parser.add_argument("--dataset_cfg", "-d", default="cfg/dataset.yaml", help="Dataset config file path", type=str)
+parser.add_argument("--cfg", "-c", default="/home/blattst/git/pizza/Quantized-yolov1/cfg/config.yaml", help="Project config file path", type=str)
 parser.add_argument("--weights", "-w", default="", help="Pretrained model weights path", type=str)
 parser.add_argument("--output", "-o", default="output", help="Output path", type=str)
 parser.add_argument("--epochs", "-e", default=100, help="Training epochs", type=int)
 parser.add_argument("--lr", "-lr", default=0.002, help="Training learning rate", type=float)
-parser.add_argument("--batch_size", "-bs", default=32, help="Training batch size", type=int)
 parser.add_argument("--save_freq", "-sf", default=10, help="Frequency of saving model checkpoint when training",
                     type=int)
 args = parser.parse_args()
@@ -104,9 +102,8 @@ def test(model, test_loader, device, S, B):
 
 if __name__ == "__main__":
     cfg = parse_cfg(args.cfg)
-    dataset_cfg = parse_cfg(args.dataset_cfg)
-    img_path, label_path = dataset_cfg['images'], dataset_cfg['labels']
-    S, B, num_classes, input_size = cfg['S'], cfg['B'], cfg['num_classes'], cfg['input_size']
+    img_path = cfg['train_path']
+    S, B, num_classes, input_size = cfg['S'], cfg['B'], len(cfg['class_names']), cfg['input_size']
 
     # create output file folder
     start = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
@@ -119,19 +116,25 @@ if __name__ == "__main__":
     model = build_model(args.weights, S, B, num_classes).to(device)
 
     # plot model structure
-    # graph = make_dot(model(torch.rand(1, 3, args.input_size, args.input_size).cuda()),
-    #                  params=dict(model.named_parameters()))
-    # graph.render('model_structure', './', cleanup=True, format='png')
+    graph = make_dot(model(torch.rand(1, 3, input_size, input_size)),
+                      params=dict(model.named_parameters()))
+    graph.render('model_structure', './', cleanup=True, format='png')
+
+
+    
 
     # get data loader
-    train_loader, val_loader, test_loader = create_dataloader(img_path, label_path, 0.8, 0.1, 0.1, args.batch_size,
-                                                              input_size, S, B, num_classes)
+    train_loader, val_loader, test_loader = create_dataloader(cfg['train_path'], cfg['valid_path'], cfg['test_path'], cfg['batch_size'],
+                                                              input_size, S, B, cfg['class_names'])
 
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0005)
     # optimizer = Adam(model.parameters(), lr=lr)
 
     train_loss_lst, val_loss_lst = [], []
 
+    print("Start Training with {} train, {} test, and {} valid images".format(len(train_loader), len(test_loader), len(val_loader)))
+
+    
     # train epoch
     for epoch in range(args.epochs):
         train_loss_lst = train(model, train_loader, optimizer, epoch, device, S, B, train_loss_lst)
