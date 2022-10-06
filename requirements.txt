@@ -7,4 +7,5 @@ matplotlib
 PyYaml
 torchviz
 pascal-voc-writer
-PIL
+brevitas
+Pillow
