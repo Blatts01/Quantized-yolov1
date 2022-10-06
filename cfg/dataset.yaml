@@ -1,8 +1,0 @@
-# dataset images folder
-images: dataset/VOC2007/JPEGImages/
-
-
-# class names
-class_names: [ 'person', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep', 'aeroplane', 'bicycle', 'boat', 'bus', 'car',
-               'motorbike', 'train', 'bottle', 'chair', 'dining table', 'potted plant', 'sofa', 'tvmonitor' ]
-# class_names: ['airplane', 'ship', 'storage tank', 'baseball diamond', 'tennis court', 'basketball court', 'ground track field', 'harbor', 'bridge', 'vehicle']

@@ -4,8 +4,8 @@ B: 2
 
 # Pascal VOC Dataset
 input_size: 448
-train_path: /
-valid_path: /
-test_path: /
+train_path: dataset/train/
+valid_path: dataset/valid/
+test_path: dataset/test/
 # class names
 class_names: [ 'Pizza', 'Pepperoni' ]
