@@ -40,12 +40,12 @@ def train(model, train_loader, optimizer, epoch, device, S, B, train_loss_lst):
         t_batch = time.time() - t_start
 
         # show batch0 dataset
-        if batch_idx == 0 and epoch == 0:
+        if epoch == 0:
             fig = plt.figure()
             inputs = inputs.cpu()  # convert to cpu
             grid = utils.make_grid(inputs)
             plt.imshow(grid.numpy().transpose((1, 2, 0)))
-            plt.savefig(os.path.join(output_path, 'batch0.png'))
+            plt.savefig(os.path.join(output_path, 'batch{}.png'.format(batch_idx)))
             # plt.show()
             plt.close(fig)
 
