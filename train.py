@@ -4,7 +4,7 @@ import time
 
 import matplotlib.pyplot as plt
 import torch
-from torch.optim import SGD
+from torch.optim import SGD, Adam
 from torchvision import utils
 
 from utils import create_dataloader, YOLOv1Loss, parse_cfg, build_model
@@ -116,8 +116,8 @@ if __name__ == "__main__":
     model = build_model(args.weights, S, B, num_classes).to(device)
 
     # plot model structure
-    graph = make_dot(model(torch.rand(1, 3, input_size, input_size)),
-                      params=dict(model.named_parameters()))
+    graph = make_dot(model(torch.rand(1, 3, input_size, input_size).to(device)),
+                     params=dict(model.named_parameters()))
     graph.render('model_structure', './', cleanup=True, format='png')
 
 
@@ -127,8 +127,8 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader = create_dataloader(cfg['train_path'], cfg['valid_path'], cfg['test_path'], cfg['batch_size'],
                                                               input_size, S, B, cfg['class_names'])
 
-    optimizer = SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0005)
-    # optimizer = Adam(model.parameters(), lr=lr)
+    #optimizer = SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0005)
+    optimizer = Adam(model.parameters(), lr=0.001, betas=(0.9,0.999),eps=1e-08,weight_decay=0,amsgrad=False)
 
     train_loss_lst, val_loss_lst = [], []
 

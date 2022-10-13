@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import yaml
 
-from models import YOLOv1, QuantYOLOv1
+from models import YOLOv1, QuantYOLOv1, MixedFloatYolov3, MixedFloatYolov1
 
 
 def xywhc2label(bboxs, S, B, num_classes):
@@ -158,8 +158,9 @@ def parse_cfg(cfg_path):
 
 
 def build_model(weight_path, S, B, num_classes):
-    model = YOLOv1(S, B, num_classes)
-    #model = QuantYOLOv1(S, B, num_classes)
+    #model = YOLOv1(S, B, num_classes)
+    # model = QuantYOLOv1(S, B, num_classes)
+    model = MixedFloatYolov1(S, B, num_classes)
 
     # load pretrained model
     if weight_path and weight_path != '':
