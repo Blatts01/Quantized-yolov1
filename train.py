@@ -8,6 +8,7 @@ from torch.optim import SGD, Adam
 from torchvision import utils
 
 from utils import create_dataloader, YOLOv1Loss, parse_cfg, build_model
+from brevitas.export import StdQOpONNXManager, PytorchQuantManager, PyXIRManager
 
 from torchviz import make_dot
 
@@ -148,6 +149,11 @@ if __name__ == "__main__":
 
     # save model
     torch.save(model.state_dict(), os.path.join(output_path, 'last.pth'))
+    
+    # export model 
+    FINNManager.export(model, input_shape=(1, 3, 32, 32), export_path=os.path.join(output_path, 'finn_lenet.onnx'))
+    StdQOpONNXManager.export(model, input_shape=(1, 3, 32, 32), export_path=os.path.join(output_path, 'onnx_lenet.onnx'))
+    PyXIRManager.export(model, input_shape=(1, 3, 32, 32), export_path=os.path.join(output_path,'pyxir_lenet.onnx'))
 
     # plot loss, save params change
     fig = plt.figure()
