@@ -8,7 +8,7 @@ from torch.optim import SGD, Adam
 from torchvision import utils
 
 from utils import create_dataloader, YOLOv1Loss, parse_cfg, build_model
-from brevitas.export import StdQOpONNXManager, PytorchQuantManager, PyXIRManager
+from brevitas.export import StdQOpONNXManager, FINNManager, PyXIRManager
 
 from torchviz import make_dot
 
