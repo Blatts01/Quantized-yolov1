@@ -9,3 +9,5 @@ torchviz
 pascal-voc-writer
 brevitas
 Pillow
+onnx
+onnxoptimizer
