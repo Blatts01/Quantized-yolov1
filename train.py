@@ -151,9 +151,9 @@ if __name__ == "__main__":
     torch.save(model.state_dict(), os.path.join(output_path, 'last.pth'))
     
     # export model 
-    FINNManager.export(model, input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path, 'finn_lenet.onnx'))
-    StdQOpONNXManager.export(model, input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path, 'onnx_lenet.onnx'))
-    PyXIRManager.export(model, input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path,'pyxir_lenet.onnx'))
+    FINNManager.export(model.to(device), input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path, 'finn_lenet.onnx'))
+    StdQOpONNXManager.export(model.to(device), input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path, 'onnx_lenet.onnx'))
+    PyXIRManager.export(model.to(device), input_shape=(1, 3, 448, 448), export_path=os.path.join(output_path,'pyxir_lenet.onnx'))
 
     # plot loss, save params change
     fig = plt.figure()
